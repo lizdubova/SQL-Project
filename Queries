@@ -1,111 +1,111 @@
 /* Query 1 — query used for first insight */
 SELECT genre, 
-               number_of_times_rented
+       number_of_times_rented
 FROM (SELECT c.name AS genre,
-                           COUNT(r.rental_id) OVER (PARTITION BY c.category_id) AS number_of_times_rented
-             FROM category c
-            JOIN film_category fc
-              ON fc.category_id = c.category_id
-            JOIN inventory i
-              ON i.film_id = fc.film_id
-            JOIN rental r
-              ON r.inventory_id = i.inventory_id)
+             COUNT(r.rental_id) OVER (PARTITION BY c.category_id) AS number_of_times_rented
+       FROM category c
+       JOIN film_category fc
+        ON fc.category_id = c.category_id
+       JOIN inventory i
+        ON i.film_id = fc.film_id
+       JOIN rental r
+        ON r.inventory_id = i.inventory_id)
 GROUP BY genre, number_of_times_rented
 ORDER BY number_of_times_rented DESC;
 
 /* Query 2 — query used for second insight */
 SELECT number, 
-              CONCAT (rent_month, '-', rent_year) rent_date, 
-              store
+       CONCAT (rent_month, '-', rent_year) rent_date, 
+       store
 FROM (SELECT COUNT (r.rental_id) number, 
-                            sr.store_id store, 
-                            DATE_PART('month', r.rental_date) rent_month, 
-                            DATE_PART('year', r.rental_date) rent_year
-              FROM rental r
-             JOIN staff sf
-               ON r.staff_id=sf.staff_id
-             JOIN store sr
-               ON sf.store_id=sr.store_id
-             GROUP BY sr.store_id, rent_month, rent_year
-             ORDER BY rent_year, rent_month);
+             sr.store_id store, 
+             DATE_PART('month', r.rental_date) rent_month, 
+             DATE_PART('year', r.rental_date) rent_year
+      FROM rental r
+      JOIN staff sf
+       ON r.staff_id=sf.staff_id
+      JOIN store sr
+       ON sf.store_id=sr.store_id
+      GROUP BY sr.store_id, rent_month, rent_year
+      ORDER BY rent_year, rent_month);
 
 /* Query 3.1 — query used for the top 1 customer in the third insight */
 SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name, 
-              COUNT(p.payment_id) payment_count, 
-              SUM(p.amount) payment_sum, 
-              DATE_TRUNC('month', p.payment_date) payment_month
+       COUNT(p.payment_id) payment_count, 
+       SUM(p.amount) payment_sum, 
+       DATE_TRUNC('month', p.payment_date) payment_month
 FROM customer c
 JOIN payment p
   ON c.customer_id=p.customer_id
 WHERE CONCAT(c.first_name, ' ', c.last_name)
 IN (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name
-      FROM customer c
-     JOIN payment p
-       ON c.customer_id=p.customer_id
-     GROUP BY customer_name
-     ORDER BY SUM(p.amount) DESC
-     LIMIT 1)
+    FROM customer c
+    JOIN payment p
+     ON c.customer_id=p.customer_id
+    GROUP BY customer_name
+    ORDER BY SUM(p.amount) DESC
+    LIMIT 1)
 GROUP BY customer_name, payment_month
 ORDER BY payment_month;
 
 /* Query 3.2 — query used for the top 2 customer in the third insight */
 SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name, 
-              COUNT(p.payment_id) payment_count, 
-              SUM(p.amount) payment_sum, 
-              DATE_TRUNC('month', p.payment_date) payment_month
+       COUNT(p.payment_id) payment_count, 
+       SUM(p.amount) payment_sum, 
+       DATE_TRUNC('month', p.payment_date) payment_month
 FROM customer c
 JOIN payment p
   ON c.customer_id=p.customer_id
 WHERE CONCAT(c.first_name, ' ', c.last_name)
 IN (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name
-      FROM customer c
-     JOIN payment p
-       ON c.customer_id=p.customer_id
-     GROUP BY customer_name
-     ORDER BY SUM(p.amount) DESC
-     LIMIT 1
-     OFFSET 1)
+    FROM customer c
+    JOIN payment p
+     ON c.customer_id=p.customer_id
+    GROUP BY customer_name
+    ORDER BY SUM(p.amount) DESC
+    LIMIT 1
+    OFFSET 1)
 GROUP BY customer_name, payment_month
 ORDER BY payment_month;
 
 /* Query 3.3 — query used for the top 3 customer in the third insight */
 SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name, 
-              COUNT(p.payment_id) payment_count, 
-              SUM(p.amount) payment_sum, 
-              DATE_TRUNC('month', p.payment_date) payment_month
+       COUNT(p.payment_id) payment_count, 
+       SUM(p.amount) payment_sum, 
+       DATE_TRUNC('month', p.payment_date) payment_month
 FROM customer c
 JOIN payment p
   ON c.customer_id=p.customer_id
 WHERE CONCAT(c.first_name, ' ', c.last_name)
 IN (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name
-      FROM customer c
-     JOIN payment p
-       ON c.customer_id=p.customer_id
-     GROUP BY customer_name
-     ORDER BY SUM(p.amount) DESC
-     LIMIT 1
+    FROM customer c
+    JOIN payment p
+     ON c.customer_id=p.customer_id
+    GROUP BY customer_name
+    ORDER BY SUM(p.amount) DESC
+    LIMIT 1
     OFFSET 2)
 GROUP BY customer_name, payment_month
 ORDER BY payment_month;
 
 /* Query 4 — query used for fourth insight */
 SELECT customer_name,
-              payment_month,
-              payment_sum,
-              payment_sum - LAG(payment_sum) OVER (ORDER BY payment_month) AS lag_difference
+       payment_month,
+       payment_sum,
+       payment_sum - LAG(payment_sum) OVER (ORDER BY payment_month) AS lag_difference
 FROM (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name, 
-                           SUM(p.amount) payment_sum, 
-                           DATE_TRUNC('month', p.payment_date) payment_month
-             FROM customer c
-            JOIN payment p
-              ON c.customer_id=p.customer_id
-            WHERE CONCAT(c.first_name, ' ', c.last_name)
-            IN (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name
-                  FROM customer c
-                 JOIN payment p
-                   ON c.customer_id=p.customer_id
-                 GROUP BY customer_name
-                 ORDER BY SUM(p.amount) DESC
-                 LIMIT 1)
-           GROUP BY customer_name, payment_month
-           ORDER BY payment_month);
+             SUM(p.amount) payment_sum, 
+             DATE_TRUNC('month', p.payment_date) payment_month
+      FROM customer c
+      JOIN payment p
+       ON c.customer_id=p.customer_id
+      WHERE CONCAT(c.first_name, ' ', c.last_name)
+      IN (SELECT CONCAT(c.first_name, ' ', c.last_name) customer_name
+          FROM customer c
+          JOIN payment p
+           ON c.customer_id=p.customer_id
+          GROUP BY customer_name
+          ORDER BY SUM(p.amount) DESC
+          LIMIT 1)
+      GROUP BY customer_name, payment_month
+      ORDER BY payment_month);
